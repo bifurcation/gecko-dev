@@ -225,6 +225,8 @@
 #define SRTP_AES128_CM_HMAC_SHA1_32             0x0002
 #define SRTP_NULL_HMAC_SHA1_80                  0x0005
 #define SRTP_NULL_HMAC_SHA1_32                  0x0006
+#define SRTP_AEAD_AES_128_GCM                   0x0007
+#define SRTP_AEAD_AES_256_GCM                   0x0008
 
 /* DO NOT USE. (deprecated, will be removed) */
 #define SSL_HL_ERROR_HBYTES                     3
