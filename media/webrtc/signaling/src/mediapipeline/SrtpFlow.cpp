@@ -69,6 +69,18 @@ RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
       srtp_crypto_policy_set_aes_cm_128_hmac_sha1_32(&policy.rtp);
       srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&policy.rtcp); // 80-bit per RFC 5764
       break;                                                   // S 4.1.2.
+    case SRTP_AEAD_AES_128_GCM:
+      CSFLogDebug(LOGTAG,
+                  "Setting SRTP cipher suite SRTP_AEAD_AES_128_GCM");
+      srtp_crypto_policy_set_aes_gcm_128_16_auth(&policy.rtp);
+      srtp_crypto_policy_set_aes_gcm_128_16_auth(&policy.rtcp);
+      break;
+    case SRTP_AEAD_AES_256_GCM:
+      CSFLogDebug(LOGTAG,
+                  "Setting SRTP cipher suite SRTP_AEAD_AES_256_GCM");
+      srtp_crypto_policy_set_aes_gcm_256_16_auth(&policy.rtp);
+      srtp_crypto_policy_set_aes_gcm_256_16_auth(&policy.rtcp);
+      break;
     default:
       CSFLogError(LOGTAG, "Request to set unknown SRTP cipher suite");
       return nullptr;
