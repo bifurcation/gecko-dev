@@ -364,7 +364,7 @@ int main(int argc, char *argv[])
         switch (sec_servs) {
         case sec_serv_conf_and_auth:
             if (gcm_on) {
-#ifdef OPENSSL
+#ifdef GCM
                 switch (key_size) {
                 case 128:
                     srtp_crypto_policy_set_aes_gcm_128_8_auth(&policy.rtp);
@@ -376,7 +376,7 @@ int main(int argc, char *argv[])
                     break;
                 }
 #else
-                printf("error: GCM mode only supported when using the OpenSSL "
+                printf("error: GCM mode only supported when using the OpenSSL or NSS"
                        "crypto engine.\n");
                 return 0;
 #endif
@@ -413,7 +413,7 @@ int main(int argc, char *argv[])
             break;
         case sec_serv_auth:
             if (gcm_on) {
-#ifdef OPENSSL
+#ifdef GCM
                 switch (key_size) {
                 case 128:
                     srtp_crypto_policy_set_aes_gcm_128_8_only_auth(&policy.rtp);

@@ -1,10 +1,10 @@
 /*
- * aes_gcm_nss.h
+ * aes_gcm_ossl.h
  *
  * Header for AES Galois Counter Mode.
  *
- * Nils Ohlmeier
- * Mozilla
+ * John A. Foley
+ * Cisco Systems, Inc.
  *
  */
 /*
@@ -43,18 +43,45 @@
  *
  */
 
-#ifndef AES_GCM_NSS_H
-#define AES_GCM_NSS_H
+#ifndef AES_GCM_OSSL_H
+#define AES_GCM_OSSL_H
 
 #include "cipher.h"
 #include "srtp.h"
 #include "datatypes.h"
 
+#ifdef OPENSSL
+
+#include <openssl/evp.h>
+#include <openssl/aes.h>
+
 typedef struct {
     int key_size;
     int tag_len;
-    char *ctx;
+    EVP_CIPHER_CTX *ctx;
     srtp_cipher_direction_t dir;
 } srtp_aes_gcm_ctx_t;
 
-#endif /* AES_GCM_NSS_H */
+#endif /* OPENSSL */
+
+#ifdef NSS
+
+#include <pk11pub.h>
+
+#define MAX_AD_SIZE 2048
+
+typedef struct {
+    int key_size;
+    int tag_size;
+    srtp_cipher_direction_t dir;
+    uint8_t key[32];
+    uint8_t iv[12];
+    uint8_t aad[MAX_AD_SIZE];
+    int aad_size;
+    CK_GCM_PARAMS params;
+    uint8_t tag[16];
+} srtp_aes_gcm_ctx_t;
+
+#endif /* NSS */
+
+#endif /* AES_GCM_OSSL_H */
