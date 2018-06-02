@@ -15,9 +15,7 @@
 
 namespace mozilla {
 
-#define SRTP_MASTER_KEY_LENGTH 16
-#define SRTP_MASTER_SALT_LENGTH 14
-#define SRTP_TOTAL_KEY_LENGTH (SRTP_MASTER_KEY_LENGTH + SRTP_MASTER_SALT_LENGTH)
+#define SRTP_MAX_MASTER_KEY_LENGTH 88
 
 // SRTCP requires an auth tag *plus* a 4-byte index-plus-'E'-bit value (see
 // RFC 3711)
@@ -28,6 +26,8 @@ class SrtpFlow {
   ~SrtpFlow();
  public:
 
+  static unsigned int KeySize(int cipher_suite);
+  static unsigned int SaltSize(int cipher_suite);
 
   static RefPtr<SrtpFlow> Create(int cipher_suite,
                                           bool inbound,

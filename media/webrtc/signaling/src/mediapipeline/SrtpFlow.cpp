@@ -31,6 +31,16 @@ SrtpFlow::~SrtpFlow() {
   }
 }
 
+unsigned int SrtpFlow::KeySize(int cipher_suite) {
+  srtp_profile_t profile = static_cast<srtp_profile_t>(cipher_suite);
+  return srtp_profile_get_master_key_length(profile);
+}
+
+unsigned int SrtpFlow::SaltSize(int cipher_suite) {
+  srtp_profile_t profile = static_cast<srtp_profile_t>(cipher_suite);
+  return srtp_profile_get_master_salt_length(profile);
+}
+
 RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
                                            bool inbound,
                                            const void *key,
@@ -46,45 +56,26 @@ RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
     return nullptr;
   }
 
-  if (key_len != SRTP_TOTAL_KEY_LENGTH) {
-    CSFLogError(LOGTAG, "Invalid SRTP key length");
-    return nullptr;
-  }
-
   srtp_policy_t policy;
   memset(&policy, 0, sizeof(srtp_policy_t));
 
-  // Note that we set the same cipher suite for RTP and RTCP
-  // since any flow can only have one cipher suite with DTLS-SRTP
-  switch (cipher_suite) {
-    case SRTP_AES128_CM_HMAC_SHA1_80:
-      CSFLogDebug(LOGTAG,
-                  "Setting SRTP cipher suite SRTP_AES128_CM_HMAC_SHA1_80");
-      srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&policy.rtp);
-      srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&policy.rtcp);
-      break;
-    case SRTP_AES128_CM_HMAC_SHA1_32:
-      CSFLogDebug(LOGTAG,
-                  "Setting SRTP cipher suite SRTP_AES128_CM_HMAC_SHA1_32");
-      srtp_crypto_policy_set_aes_cm_128_hmac_sha1_32(&policy.rtp);
-      srtp_crypto_policy_set_aes_cm_128_hmac_sha1_80(&policy.rtcp); // 80-bit per RFC 5764
-      break;                                                   // S 4.1.2.
-    case SRTP_AEAD_AES_128_GCM:
-      CSFLogDebug(LOGTAG,
-                  "Setting SRTP cipher suite SRTP_AEAD_AES_128_GCM");
-      srtp_crypto_policy_set_aes_gcm_128_16_auth(&policy.rtp);
-      srtp_crypto_policy_set_aes_gcm_128_16_auth(&policy.rtcp);
-      break;
-    case SRTP_AEAD_AES_256_GCM:
-      CSFLogDebug(LOGTAG,
-                  "Setting SRTP cipher suite SRTP_AEAD_AES_256_GCM");
-      srtp_crypto_policy_set_aes_gcm_256_16_auth(&policy.rtp);
-      srtp_crypto_policy_set_aes_gcm_256_16_auth(&policy.rtcp);
-      break;
-    default:
-      CSFLogError(LOGTAG, "Request to set unknown SRTP cipher suite");
-      return nullptr;
+  // In DTLS-SRTP, the protection profile negotiated by the DTLS
+  // handshake determines the ciphers to be used for RTP and RTCP.
+  srtp_profile_t profile = static_cast<srtp_profile_t>(cipher_suite);
+
+  srtp_err_status_t r;
+  r = srtp_crypto_policy_set_from_profile_for_rtp(&policy.rtp, profile);
+  if (r != srtp_err_status_ok) {
+    CSFLogError(LOGTAG, "Error creating srtp session");
+    return nullptr;
   }
+
+  r = srtp_crypto_policy_set_from_profile_for_rtcp(&policy.rtcp, profile);
+  if (r != srtp_err_status_ok) {
+    CSFLogError(LOGTAG, "Error creating srtp session");
+    return nullptr;
+  }
+
   // This key is copied into the srtp_t object, so we don't
   // need to keep it.
   policy.key = const_cast<unsigned char *>(
@@ -97,7 +88,7 @@ RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
   policy.next = nullptr;
 
   // Now make the session
-  srtp_err_status_t r = srtp_create(&flow->session_, &policy);
+  r = srtp_create(&flow->session_, &policy);
   if (r != srtp_err_status_ok) {
     CSFLogError(LOGTAG, "Error creating srtp session");
     return nullptr;

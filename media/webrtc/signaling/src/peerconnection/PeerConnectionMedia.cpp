@@ -627,6 +627,8 @@ PeerConnectionMedia::UpdateTransportFlow(
   }
 
   std::vector<uint16_t> srtpCiphers;
+  srtpCiphers.push_back(SRTP_AEAD_AES_256_GCM_DOUBLE);
+  srtpCiphers.push_back(SRTP_AEAD_AES_128_GCM_DOUBLE);
   srtpCiphers.push_back(SRTP_AEAD_AES_256_GCM);
   srtpCiphers.push_back(SRTP_AEAD_AES_128_GCM);
   srtpCiphers.push_back(SRTP_AES128_CM_HMAC_SHA1_80);
