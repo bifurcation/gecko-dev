@@ -128,10 +128,10 @@
 /* #undef OPENSSL_KDF */
 
 /* Define this to use NSS crypto. */
-/* #undef NSS */
+#define NSS 1
 
 /* Define this to use AES-GCM.  Requires OPENSSL or NSS */
-/* #undef GCM */
+#define GCM 1
 
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "https://github.com/cisco/libsrtp/issues"
