@@ -1,9 +1,9 @@
 /*
- * aes_gcm.h
+ * aes_gcm_double.h
  *
- * Header for AES Galois Counter Mode.
+ * Header for double AES Galois Counter Mode.
  *
- * John A. Foley
+ * Richard L. Barnes
  * Cisco Systems, Inc.
  *
  */
@@ -43,53 +43,30 @@
  *
  */
 
-#ifndef AES_GCM_H
-#define AES_GCM_H
+#ifndef AES_GCM_DOUBLE_H
+#define AES_GCM_DOUBLE_H
 
 #include "cipher.h"
 #include "srtp.h"
 #include "datatypes.h"
+#include "aes_gcm.h"
 
-/*
- * For now we only support 8 and 16 octet tags.  The spec allows for
- * optional 12 byte tag, which may be supported in the future.
- */
-#define GCM_IV_LEN 12
-#define GCM_AUTH_TAG_LEN 16
-#define GCM_AUTH_TAG_LEN_8 8
+#define MAX_OHB_LEN 4
+#define  GCM_DOUBLE_MAX_AUTH_TAG_LEN                                     \
+    (GCM_AUTH_TAG_LEN + MAX_OHB_LEN + GCM_AUTH_TAG_LEN)
 
-#ifdef OPENSSL
-
-#include <openssl/evp.h>
-#include <openssl/aes.h>
+#define GCM_DOUBLE_MAX_AD_LEN         512
+#define GCM_DOUBLE_MAX_PLAINTEXT_LEN  2048
 
 typedef struct {
     int key_size;
-    int tag_len;
-    EVP_CIPHER_CTX *ctx;
     srtp_cipher_direction_t dir;
-} srtp_aes_gcm_ctx_t;
-
-#endif /* OPENSSL */
-
-#ifdef NSS
-
-#include <pk11pub.h>
-
-#define GCM_MAX_AD_SIZE 512
-
-typedef struct {
-    int key_size;
-    int tag_size;
-    srtp_cipher_direction_t dir;
-    uint8_t key[32];
-    uint8_t iv[12];
-    uint8_t aad[GCM_MAX_AD_SIZE];
+    uint8_t aad[GCM_DOUBLE_MAX_AD_LEN];
     int aad_size;
-    CK_GCM_PARAMS params;
-    uint8_t tag[16];
-} srtp_aes_gcm_ctx_t;
+    uint8_t tag[GCM_DOUBLE_MAX_AUTH_TAG_LEN];
+    int tag_size;
+    srtp_cipher_t *inner;
+    srtp_cipher_t *outer;
+} srtp_aes_gcm_double_ctx_t;
 
-#endif /* NSS */
-
-#endif /* AES_GCM_H */
+#endif /* AES_GCM_DOUBLE_H */

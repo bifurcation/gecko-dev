@@ -6,6 +6,7 @@
 
 UNIFIED_SOURCES += [
     'crypto/cipher/aes.c',
+    'crypto/cipher/aes_gcm_double.c',
     'crypto/cipher/aes_gcm_nss.c',
     'crypto/cipher/aes_icm_nss.c',
     'crypto/cipher/cipher.c',
