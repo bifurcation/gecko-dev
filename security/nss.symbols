@@ -678,6 +678,7 @@ SSL_GetNextProto
 SSL_GetNumImplementedCiphers
 SSL_GetPreliminaryChannelInfo
 SSL_GetSRTPCipher
+SSL_GetEKTCipher;
 SSL_GetStatistics
 SSL_HandshakeCallback
 SSL_HandshakeNegotiatedExtension
@@ -699,6 +700,7 @@ SSL_SetNextProtoNego
 SSL_SetPKCS11PinArg
 SSL_SetSockPeerID
 SSL_SetSRTPCiphers
+SSL_SetEKTCiphers
 SSL_SetStapledOCSPResponses
 SSL_SetTrustAnchors
 SSL_SetURL

@@ -153,6 +153,8 @@ SSL_VersionRangeSet;
 SSL_VersionRangeSetDefault;
 SSL_GetSRTPCipher;
 SSL_SetSRTPCiphers;
+SSL_GetEKTCipher;
+SSL_SetEKTCiphers;
 ;+    local:
 ;+*;
 ;+};

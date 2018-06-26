@@ -86,6 +86,9 @@ class TransportLayerDtls final : public TransportLayer {
   nsresult SetSrtpCiphers(std::vector<uint16_t> ciphers);
   nsresult GetSrtpCipher(uint16_t *cipher) const;
 
+  nsresult SetEktCiphers(std::vector<uint8_t> ciphers);
+  nsresult GetEktCipher(uint8_t *cipher) const;
+
   nsresult ExportKeyingMaterial(const std::string& label,
                                 bool use_context,
                                 const std::string& context,
@@ -172,6 +175,7 @@ class TransportLayerDtls final : public TransportLayer {
   // What ALPN string was negotiated.
   std::string alpn_;
   std::vector<uint16_t> srtp_ciphers_;
+  std::vector<uint8_t> ekt_ciphers_;
 
   Role role_;
   Verification verification_mode_;

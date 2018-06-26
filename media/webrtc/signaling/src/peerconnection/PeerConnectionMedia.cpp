@@ -640,6 +640,17 @@ PeerConnectionMedia::UpdateTransportFlow(
     return rv;
   }
 
+  std::vector<uint8_t> ektCiphers;
+  ektCiphers.push_back(EKT_AESKW_128);
+  ektCiphers.push_back(EKT_AESKW_256);
+
+  rv = dtls->SetEktCiphers(ektCiphers);
+  if (NS_FAILED(rv)) {
+    CSFLogError(LOGTAG, "Couldn't set EKT ciphers");
+    return rv;
+  }
+
+  
   // Always permits negotiation of the confidential mode.
   // Only allow non-confidential (which is an allowed default),
   // if we aren't confidential.

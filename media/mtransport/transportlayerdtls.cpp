@@ -768,6 +768,17 @@ bool TransportLayerDtls::SetupCipherSuites(UniquePRFileDesc& ssl_fd) const {
     }
   }
 
+  // Set the EKT Ciphers
+  if (!ekt_ciphers_.empty()) {
+    // Note: std::vector is guaranteed to contiguous
+    rv = SSL_SetEKTCiphers(ssl_fd.get(), &ekt_ciphers_[0],
+                            ekt_ciphers_.size());
+    if (rv != SECSuccess) {
+      MOZ_MTLOG(ML_ERROR, "Couldn't set EKT cipher suite");
+      return false;
+    }
+  }
+
   for (const auto& cipher : EnabledCiphers) {
     MOZ_MTLOG(ML_DEBUG, LAYER_INFO << "Enabling: " << cipher);
     rv = SSL_CipherPrefSet(ssl_fd.get(), cipher, PR_TRUE);
@@ -1151,6 +1162,27 @@ nsresult TransportLayerDtls::GetSrtpCipher(uint16_t *cipher) const {
   SECStatus rv = SSL_GetSRTPCipher(ssl_fd_.get(), cipher);
   if (rv != SECSuccess) {
     MOZ_MTLOG(ML_DEBUG, "No SRTP cipher negotiated");
+    return NS_ERROR_FAILURE;
+  }
+
+  return NS_OK;
+}
+
+nsresult TransportLayerDtls::SetEktCiphers(std::vector<uint8_t> ciphers) {
+  // TODO: We should check these
+  ekt_ciphers_ = ciphers;
+
+  return NS_OK;
+}
+
+nsresult TransportLayerDtls::GetEktCipher(uint8_t *cipher) const {
+  CheckThread();
+  if (state_ != TS_OPEN) {
+    return NS_ERROR_NOT_AVAILABLE;
+  }
+  SECStatus rv = SSL_GetEKTCipher(ssl_fd_.get(), cipher);
+  if (rv != SECSuccess) {
+    MOZ_MTLOG(ML_DEBUG, "No EKT cipher negotiated");
     return NS_ERROR_FAILURE;
   }
 
