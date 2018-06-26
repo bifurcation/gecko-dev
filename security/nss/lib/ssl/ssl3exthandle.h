@@ -119,4 +119,24 @@ SECStatus ssl_SendSupportedGroupsXtn(const sslSocket *ss,
 SECStatus ssl3_SendSupportedPointFormatsXtn(const sslSocket *ss,
                                             TLSExtensionData *xtnData,
                                             sslBuffer *buf, PRBool *added);
+SECStatus ssl_HandleRecordSizeLimitXtn(const sslSocket *ss,
+                                       TLSExtensionData *xtnData,
+                                       SECItem *data);
+SECStatus ssl_SendRecordSizeLimitXtn(const sslSocket *ss,
+                                     TLSExtensionData *xtnData,
+                                     sslBuffer *buf, PRBool *added);
+
+SECStatus ssl_ClientSendSupportedEKTCiphersXtn(const sslSocket *ss,
+                                                TLSExtensionData *xtnData,
+                                                sslBuffer *buf, PRBool *added);
+SECStatus ssl_ServerSendSupportedEKTCiphersXtn(const sslSocket *ss,
+                                                TLSExtensionData *xtnData,
+                                                sslBuffer *buf, PRBool *added);
+SECStatus ssl_ClientHandleSupportedEKTCiphersXtn(const sslSocket *ss,
+                                                  TLSExtensionData *xtnData,
+                                                  SECItem *data);
+SECStatus ssl_ServerHandleSupportedEKTCiphersXtn(const sslSocket *ss,
+                                                  TLSExtensionData *xtnData,
+                                                  SECItem *data);
+
 #endif

@@ -85,6 +85,7 @@ struct TLSExtensionDataStr {
     SSLNextProtoState nextProtoState;
 
     PRUint16 dtlsSRTPCipherSuite; /* 0 if not selected */
+    PRUint8 ektCipher; /* 0 if not selected */
 
     unsigned int lastXtnOffset; /* Where to insert padding. 0 = end. */
     PRCList remoteKeyShares;    /* The other side's public keys (TLS 1.3) */
@@ -98,6 +99,9 @@ struct TLSExtensionDataStr {
     /* The application token contains a value that was passed to the client via
      * a session ticket, or the cookie in a HelloRetryRequest. */
     SECItem applicationToken;
+
+    /* The record size limit set by the peer. Our value is kept in ss->opt. */
+    PRUint16 recordSizeLimit;
 };
 
 typedef struct TLSExtensionStr {

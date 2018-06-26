@@ -55,6 +55,7 @@ static const sslSocketOps ssl_secure_ops = { /* SSL. */
 static sslOptions ssl_defaults = {
     .nextProtoNego = { siBuffer, NULL, 0 },
     .maxEarlyDataSize = 1 << 16,
+    .recordSizeLimit = MAX_FRAGMENT_LENGTH + 1,
     .useSecurity = PR_TRUE,
     .useSocks = PR_FALSE,
     .requestCertificate = PR_FALSE,
@@ -132,6 +133,12 @@ static const PRUint16 srtpCiphers[] = {
     SRTP_AEAD_AES_128_GCM_DOUBLE,
     SRTP_AEAD_AES_256_GCM_DOUBLE,
     0
+};
+
+static const PRUint8 ektCiphers[] = {
+    EKT_AESKW_128,
+    EKT_AESKW_256,
+    0,
 };
 
 /* This list is in preference order.  Note that while some smaller groups appear
@@ -290,6 +297,9 @@ ssl_DupSocket(sslSocket *os)
     PORT_Memcpy(ss->ssl3.dtlsSRTPCiphers, os->ssl3.dtlsSRTPCiphers,
                 sizeof(PRUint16) * os->ssl3.dtlsSRTPCipherCount);
     ss->ssl3.dtlsSRTPCipherCount = os->ssl3.dtlsSRTPCipherCount;
+    PORT_Memcpy(ss->ssl3.ektCiphers, os->ssl3.ektCiphers,
+                sizeof(PRUint16) * os->ssl3.ektCipherCount);
+    ss->ssl3.ektCipherCount = os->ssl3.ektCipherCount;
     PORT_Memcpy(ss->ssl3.signatureSchemes, os->ssl3.signatureSchemes,
                 sizeof(ss->ssl3.signatureSchemes[0]) *
                     os->ssl3.signatureSchemeCount);
@@ -807,6 +817,15 @@ SSL_OptionSet(PRFileDesc *fd, PRInt32 which, PRIntn val)
             ss->opt.enable0RttData = val;
             break;
 
+        case SSL_RECORD_SIZE_LIMIT:
+            if (val < 64 || val > (MAX_FRAGMENT_LENGTH + 1)) {
+                PORT_SetError(SEC_ERROR_INVALID_ARGS);
+                rv = SECFailure;
+            } else {
+                ss->opt.recordSizeLimit = val;
+            }
+            break;
+
         case SSL_ENABLE_TLS13_COMPAT_MODE:
             ss->opt.enableTls13CompatMode = val;
             break;
@@ -948,6 +967,9 @@ SSL_OptionGet(PRFileDesc *fd, PRInt32 which, PRIntn *pVal)
         case SSL_ENABLE_0RTT_DATA:
             val = ss->opt.enable0RttData;
             break;
+        case SSL_RECORD_SIZE_LIMIT:
+            val = ss->opt.recordSizeLimit;
+            break;
         case SSL_ENABLE_TLS13_COMPAT_MODE:
             val = ss->opt.enableTls13CompatMode;
             break;
@@ -1070,6 +1092,9 @@ SSL_OptionGetDefault(PRInt32 which, PRIntn *pVal)
             break;
         case SSL_ENABLE_0RTT_DATA:
             val = ssl_defaults.enable0RttData;
+            break;
+        case SSL_RECORD_SIZE_LIMIT:
+            val = ssl_defaults.recordSizeLimit;
             break;
         case SSL_ENABLE_TLS13_COMPAT_MODE:
             val = ssl_defaults.enableTls13CompatMode;
@@ -1254,6 +1279,14 @@ SSL_OptionSetDefault(PRInt32 which, PRIntn val)
 
         case SSL_ENABLE_0RTT_DATA:
             ssl_defaults.enable0RttData = val;
+            break;
+
+        case SSL_RECORD_SIZE_LIMIT:
+            if (val < 64 || val > (MAX_FRAGMENT_LENGTH + 1)) {
+                PORT_SetError(SEC_ERROR_INVALID_ARGS);
+                return SECFailure;
+            }
+            ssl_defaults.recordSizeLimit = val;
             break;
 
         case SSL_ENABLE_TLS13_COMPAT_MODE:
@@ -2114,6 +2147,131 @@ SSL_GetSRTPCipher(PRFileDesc *fd, PRUint16 *cipher)
     return SECSuccess;
 }
 
+SECStatus
+SSL_SetEKTCiphers(PRFileDesc *fd,
+                  const PRUint8 *ciphers,
+                  unsigned int numCiphers)
+{
+    sslSocket *ss;
+    unsigned int i;
+
+    ss = ssl_FindSocket(fd);
+    if (!ss || !IS_DTLS(ss)) {
+        SSL_DBG(("%d: SSL[%d]: bad socket in SSL_SetEKTCiphers",
+                 SSL_GETPID(), fd));
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    if (numCiphers > MAX_EKT_CIPHERS) {
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    ss->ssl3.ektCipherCount = 0;
+    for (i = 0; i < numCiphers; i++) {
+        const PRUint8 *ektCipher = ektCiphers;
+
+        while (*ektCipher) {
+            if (ciphers[i] == *ektCipher)
+                break;
+            ektCipher++;
+        }
+        if (*ektCipher) {
+            ss->ssl3.ektCiphers[ss->ssl3.ektCipherCount++] =
+                ciphers[i];
+        } else {
+            SSL_DBG(("%d: SSL[%d]: invalid or unimplemented EKT cipher "
+                     "suite specified: 0x%04hx",
+                     SSL_GETPID(), fd,
+                     ciphers[i]));
+        }
+    }
+
+    if (ss->ssl3.ektCipherCount == 0) {
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    return SECSuccess;
+}
+
+SECStatus
+SSL_GetEKTCipher(PRFileDesc *fd, PRUint8 *cipher)
+{
+    sslSocket *ss;
+
+    ss = ssl_FindSocket(fd);
+    if (!ss) {
+        SSL_DBG(("%d: SSL[%d]: bad socket in SSL_GetEKTCipher",
+                 SSL_GETPID(), fd));
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    if (!ss->xtnData.ektCipher) {
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    *cipher = ss->xtnData.ektCipher;
+    return SECSuccess;
+}
+
+SECStatus
+ssl_CopyEKTKey(SSLEKTKey *dst, const SSLEKTKey *src) {
+    if (src->ektTTL >= 1 << 24) {
+        return SECFailure;
+    }
+
+    dst->ektKeyLength = src->ektKeyLength;
+    dst->srtpMasterSaltLength = src->srtpMasterSaltLength;
+    PORT_Memcpy(dst->ektKeyValue, src->ektKeyValue, src->ektKeyLength);
+    PORT_Memcpy(dst->srtpMasterSalt, src->srtpMasterSalt, src->srtpMasterSaltLength);
+    dst->ektSPI = src->ektSPI;
+    dst->ektTTL = src->ektTTL;
+    return SECSuccess;
+}
+
+SECStatus
+SSL_SetEKTKey(PRFileDesc *fd,
+              const SSLEKTKey *key)
+{
+    sslSocket *ss = ssl_FindSocket(fd);
+    if (!ss || !IS_DTLS(ss)) {
+        SSL_DBG(("%d: SSL[%d]: bad socket in SSL_SetEKTKey",
+                 SSL_GETPID(), fd));
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    SECStatus rv = ssl_CopyEKTKey(&ss->ssl3.ektKey, key);
+    if (rv != SECSuccess) {
+      return rv;
+    }
+
+    ss->ssl3.ektKeyReceived = PR_TRUE;
+    return SECSuccess;
+}
+
+SECStatus
+SSL_GetEKTKey(PRFileDesc *fd, SSLEKTKey *key)
+{
+    sslSocket *ss = ssl_FindSocket(fd);
+    if (!ss) {
+        SSL_DBG(("%d: SSL[%d]: bad socket in SSL_GetEKTKey",
+                 SSL_GETPID(), fd));
+        PORT_SetError(SEC_ERROR_INVALID_ARGS);
+        return SECFailure;
+    }
+
+    if (!ss->ssl3.ektKeyReceived) {
+        return SECFailure;
+    }
+
+    return ssl_CopyEKTKey(key, &ss->ssl3.ektKey);
+}
+
 PRFileDesc *
 SSL_ReconfigFD(PRFileDesc *model, PRFileDesc *fd)
 {
@@ -2143,6 +2301,9 @@ SSL_ReconfigFD(PRFileDesc *model, PRFileDesc *fd)
     PORT_Memcpy(ss->ssl3.dtlsSRTPCiphers, sm->ssl3.dtlsSRTPCiphers,
                 sizeof(PRUint16) * sm->ssl3.dtlsSRTPCipherCount);
     ss->ssl3.dtlsSRTPCipherCount = sm->ssl3.dtlsSRTPCipherCount;
+    PORT_Memcpy(ss->ssl3.ektCiphers, sm->ssl3.ektCiphers,
+                sizeof(PRUint16) * sm->ssl3.ektCipherCount);
+    ss->ssl3.ektCipherCount = sm->ssl3.ektCipherCount;
     PORT_Memcpy(ss->ssl3.signatureSchemes, sm->ssl3.signatureSchemes,
                 sizeof(ss->ssl3.signatureSchemes[0]) *
                     sm->ssl3.signatureSchemeCount);
@@ -3043,26 +3204,27 @@ ssl_Poll(PRFileDesc *fd, PRInt16 how_flags, PRInt16 *p_out_flags)
                 } else { /* handshaking as server */
                     new_flags |= PR_POLL_READ;
                 }
-            } else
+            } else if (ss->lastWriteBlocked) {
                 /* First handshake is in progress */
-                if (ss->lastWriteBlocked) {
                 if (new_flags & PR_POLL_READ) {
                     /* The caller is waiting for data to be received,
                     ** but the initial handshake is blocked on write, or the
                     ** client's first handshake record has not been written.
                     ** The code should select on write, not read.
                     */
-                    new_flags ^= PR_POLL_READ;  /* don't select on read. */
+                    new_flags &= ~PR_POLL_READ; /* don't select on read. */
                     new_flags |= PR_POLL_WRITE; /* do    select on write. */
                 }
             } else if (new_flags & PR_POLL_WRITE) {
                 /* The caller is trying to write, but the handshake is
                 ** blocked waiting for data to read, and the first
                 ** handshake has been sent.  So do NOT to poll on write
-                ** unless we did false start.
+                ** unless we did false start or we are doing 0-RTT.
                 */
-                if (!ss->ssl3.hs.canFalseStart) {
-                    new_flags ^= PR_POLL_WRITE; /* don't select on write. */
+                if (!(ss->ssl3.hs.canFalseStart ||
+                      ss->ssl3.hs.zeroRttState == ssl_0rtt_sent ||
+                      ss->ssl3.hs.zeroRttState == ssl_0rtt_accepted)) {
+                    new_flags &= ~PR_POLL_WRITE; /* don't select on write. */
                 }
                 new_flags |= PR_POLL_READ; /* do    select on read. */
             }
@@ -3101,6 +3263,9 @@ ssl_Poll(PRFileDesc *fd, PRInt16 how_flags, PRInt16 *p_out_flags)
             new_flags = 0;
         }
     }
+
+    SSL_TRC(20, ("%d: SSL[%d]: ssl_Poll flags %x -> %x",
+                 SSL_GETPID(), fd, how_flags, new_flags));
 
     if (new_flags && (fd->lower->methods->poll != NULL)) {
         PRInt16 lower_out_flags = 0;

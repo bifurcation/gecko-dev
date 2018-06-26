@@ -243,6 +243,28 @@ SSL_IMPORT PRFileDesc *DTLS_ImportFD(PRFileDesc *model, PRFileDesc *fd);
  */
 #define SSL_ENABLE_0RTT_DATA 33
 
+/* Sets a limit to the size of encrypted records (see
+ * draft-ietf-tls-record-limit). This is the value that is advertised to peers,
+ * not a limit on the size of records that will be created.  Setting this value
+ * reduces the size of records that will be received (not sent).
+ *
+ * This limit applies to the plaintext, but the records that appear on the wire
+ * will be bigger.  This doesn't include record headers, IVs, block cipher
+ * padding, and authentication tags or MACs.
+ *
+ * NSS always advertises the record size limit extension.  If this option is not
+ * set, the extension will contain the maximum allowed size for the selected TLS
+ * version (currently this is 16384 or 2^14 for TLS 1.2 and lower and 16385 for
+ * TLS 1.3).
+ *
+ * By default, NSS creates records that are the maximum size possible, using all
+ * the data that was written by the application.  Writes larger than the maximum
+ * are split into maximum sized records, and any remainder (unless
+ * SSL_CBC_RANDOM_IV is enabled and active).  If a peer advertises a record size
+ * limit then that value is used instead.
+ */
+#define SSL_RECORD_SIZE_LIMIT 34
+
 /* Enables TLS 1.3 compatibility mode.  In this mode, the client includes a fake
  * session ID in the handshake and sends a ChangeCipherSpec.  A server will
  * always use the setting chosen by the client, so the value of this option has
@@ -1187,6 +1209,56 @@ SSL_IMPORT SECStatus SSL_SetSRTPCiphers(PRFileDesc *fd,
 */
 SSL_IMPORT SECStatus SSL_GetSRTPCipher(PRFileDesc *fd,
                                        PRUint16 *cipher);
+
+/*
+** Configure EKT (draft-ietf-perc-srtp-ekt-diet) cipher preferences.
+** Input is a list of ciphers in descending preference order and a length
+** of the list. As a side effect, this causes the supported_ekt_ciphers
+** extension to be negotiated.
+**
+** Invalid or unimplemented cipher suites in |ciphers| are ignored. If at
+** least one cipher suite in |ciphers| is implemented, returns SECSuccess.
+** Otherwise returns SECFailure.
+*/
+SSL_IMPORT SECStatus SSL_SetEKTCiphers(PRFileDesc *fd,
+                                       const PRUint8 *ciphers,
+                                       unsigned int numCiphers);
+
+/*
+** Get the selected EKT cipher suite (if any).
+** To be called after the handshake completes.
+** Returns SECFailure if not negotiated.
+*/
+SSL_IMPORT SECStatus SSL_GetEKTCipher(PRFileDesc *fd,
+                                      PRUint8 *cipher);
+
+#define EKT_MAX_KEY_SIZE  256
+#define EKT_MAX_SALT_SIZE 256
+typedef struct SSLEKTKey {
+    PRUint8 ektKeyValue[EKT_MAX_KEY_SIZE];
+    PRUint8 ektKeyLength;
+    PRUint8 srtpMasterSalt[EKT_MAX_SALT_SIZE];
+    PRUint8 srtpMasterSaltLength;
+    PRUint16 ektSPI;
+    PRUint32 ektTTL;
+} SSLEKTKey;
+
+/*
+** Configure EKT (draft-ietf-perc-srtp-ekt-diet) key data.
+** The SSLEKTKey struct provided as input is copied into the session.
+*/
+SSL_IMPORT SECStatus SSL_SetEKTKey(PRFileDesc *fd,
+                                   const SSLEKTKey *key);
+
+/*
+** Get the EKTKey information provided by the server.
+** To be called after the handshake completes.
+** The input key should point to a valid SSLEKTKey struct, into which
+** the values sent by the server will be copied.
+** Returns SECFailure if not received.
+*/
+SSL_IMPORT SECStatus SSL_GetEKTKey(PRFileDesc *fd,
+                                   SSLEKTKey *key);
 
 /*
  * Look to see if any of the signers in the cert chain for "cert" are found

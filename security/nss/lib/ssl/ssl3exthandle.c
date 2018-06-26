@@ -1868,3 +1868,186 @@ ssl_HandleSupportedGroupsXtn(const sslSocket *ss, TLSExtensionData *xtnData,
 
     return SECSuccess;
 }
+
+SECStatus
+ssl_HandleRecordSizeLimitXtn(const sslSocket *ss, TLSExtensionData *xtnData,
+                             SECItem *data)
+{
+    SECStatus rv;
+    PRUint32 limit;
+    PRUint32 maxLimit = (ss->version >= SSL_LIBRARY_VERSION_TLS_1_3)
+                            ? (MAX_FRAGMENT_LENGTH + 1)
+                            : MAX_FRAGMENT_LENGTH;
+
+    rv = ssl3_ExtConsumeHandshakeNumber(ss, &limit, 2, &data->data, &data->len);
+    if (rv != SECSuccess) {
+        return SECFailure;
+    }
+    if (data->len != 0 || limit < 64) {
+        ssl3_ExtSendAlert(ss, alert_fatal, illegal_parameter);
+        PORT_SetError(SSL_ERROR_RX_MALFORMED_HANDSHAKE);
+        return SECFailure;
+    }
+
+    if (ss->sec.isServer) {
+        rv = ssl3_RegisterExtensionSender(ss, xtnData, ssl_record_size_limit_xtn,
+                                          &ssl_SendRecordSizeLimitXtn);
+        if (rv != SECSuccess) {
+            return SECFailure; /* error already set. */
+        }
+    } else if (limit > maxLimit) {
+        /* The client can sensibly check the maximum. */
+        ssl3_ExtSendAlert(ss, alert_fatal, illegal_parameter);
+        PORT_SetError(SSL_ERROR_RX_MALFORMED_HANDSHAKE);
+        return SECFailure;
+    }
+
+    /* We can't enforce the maximum on a server. But we do need to ensure
+     * that we don't apply a limit that is too large. */
+    xtnData->recordSizeLimit = PR_MIN(maxLimit, limit);
+    xtnData->negotiated[xtnData->numNegotiated++] = ssl_record_size_limit_xtn;
+    return SECSuccess;
+}
+
+SECStatus
+ssl_SendRecordSizeLimitXtn(const sslSocket *ss, TLSExtensionData *xtnData,
+                           sslBuffer *buf, PRBool *added)
+{
+    PRUint32 maxLimit;
+    if (ss->sec.isServer) {
+        maxLimit = (ss->version >= SSL_LIBRARY_VERSION_TLS_1_3)
+                       ? (MAX_FRAGMENT_LENGTH + 1)
+                       : MAX_FRAGMENT_LENGTH;
+    } else {
+        maxLimit = (ss->vrange.max >= SSL_LIBRARY_VERSION_TLS_1_3)
+                       ? (MAX_FRAGMENT_LENGTH + 1)
+                       : MAX_FRAGMENT_LENGTH;
+    }
+    PRUint32 limit = PR_MIN(ss->opt.recordSizeLimit, maxLimit);
+    SECStatus rv = sslBuffer_AppendNumber(buf, limit, 2);
+    if (rv != SECSuccess) {
+        return SECFailure;
+    }
+
+    *added = PR_TRUE;
+    return SECSuccess;
+}
+
+SECStatus
+ssl_ClientSendSupportedEKTCiphersXtn(const sslSocket *ss, TLSExtensionData *xtnData,
+                                     sslBuffer *buf, PRBool *added)
+{
+    unsigned int i;
+    SECStatus rv;
+
+    if (!IS_DTLS(ss) || !ss->ssl3.ektCipherCount) {
+        return SECSuccess; /* Not relevant */
+    }
+
+    /* Length of the EKT cipher list */
+    rv = sslBuffer_AppendNumber(buf, ss->ssl3.ektCipherCount, 1);
+    if (rv != SECSuccess) {
+        return SECFailure;
+    }
+    /* The EKT ciphers */
+    for (i = 0; i < ss->ssl3.ektCipherCount; i++) {
+        rv = sslBuffer_AppendNumber(buf, ss->ssl3.ektCiphers[i], 1);
+        if (rv != SECSuccess) {
+            return SECFailure;
+        }
+    }
+
+    *added = PR_TRUE;
+    return SECSuccess;
+}
+
+SECStatus
+ssl_ServerSendSupportedEKTCiphersXtn(const sslSocket *ss, TLSExtensionData *xtnData,
+                                     sslBuffer *buf, PRBool *added)
+{
+    SECStatus rv;
+
+    /* The selected cipher */
+    rv = sslBuffer_AppendNumber(buf, xtnData->ektCipher, 1);
+    if (rv != SECSuccess) {
+        return SECFailure;
+    }
+
+    *added = PR_TRUE;
+    return SECSuccess;
+}
+
+SECStatus
+ssl_ClientHandleSupportedEKTCiphersXtn(const sslSocket *ss, TLSExtensionData *xtnData,
+                                       SECItem *data)
+{
+    if (!data->data || (data->len != 1)) {
+        ssl3_ExtDecodeError(ss);
+        return SECFailure;
+    }
+
+    xtnData->negotiated[xtnData->numNegotiated++] = ssl_supported_ekt_ciphers_xtn;
+    xtnData->ektCipher = data->data[0];
+    return SECSuccess;
+}
+
+SECStatus
+ssl_ServerHandleSupportedEKTCiphersXtn(const sslSocket *ss, TLSExtensionData *xtnData,
+                                       SECItem *data)
+{
+    SECStatus rv;
+    SECItem ciphers = { siBuffer, NULL, 0 };
+    PRUint8 i;
+    unsigned int j;
+    PRUint8 cipher = 0;
+    PRBool found = PR_FALSE;
+
+    if (!IS_DTLS(ss) || !ss->ssl3.ektCipherCount) {
+        /* Ignore the extension if we aren't doing DTLS or no EKT
+         * preferences have been set. */
+        return SECSuccess;
+    }
+
+    if (!data->data || data->len < 2) {
+        ssl3_ExtDecodeError(ss);
+        return SECFailure;
+    }
+
+    /* Get the cipher list */
+    rv = ssl3_ExtConsumeHandshakeVariable(ss, &ciphers, 1,
+                                          &data->data, &data->len);
+    if (rv != SECSuccess) {
+        return SECFailure; /* alert already sent */
+    }
+
+    /* Walk through the offered list and pick the most preferred of our
+     * ciphers, if any */
+    for (i = 0; !found && i < ss->ssl3.ektCipherCount; i++) {
+        for (j = 0; j + 1 < ciphers.len; j ++) {
+            cipher = ciphers.data[j];
+            if (cipher == ss->ssl3.ektCiphers[i]) {
+                found = PR_TRUE;
+                break;
+            }
+        }
+    }
+
+    if (data->len != 0) {
+        ssl3_ExtDecodeError(ss); /* trailing bytes */
+        return SECFailure;
+    }
+
+    /* Now figure out what to do */
+    if (!found) {
+        /* No matching ciphers, pretend we don't support EKT */
+        return SECSuccess;
+    }
+
+    /* OK, we have a valid cipher and we've selected it */
+    xtnData->ektCipher = cipher;
+    xtnData->negotiated[xtnData->numNegotiated++] = ssl_supported_ekt_ciphers_xtn;
+
+    return ssl3_RegisterExtensionSender(ss, xtnData,
+                                        ssl_supported_ekt_ciphers_xtn,
+                                        ssl_ServerSendSupportedEKTCiphersXtn);
+}
