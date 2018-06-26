@@ -969,7 +969,7 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
   offset += salt_size;
   memcpy(server_write_key + key_size, srtp_block + offset, salt_size);
   offset += salt_size;
-  MOZ_ASSERT(offset == sizeof(export_size));
+  MOZ_ASSERT(offset == export_size);
 
   unsigned char* write_key;
   unsigned char* read_key;
