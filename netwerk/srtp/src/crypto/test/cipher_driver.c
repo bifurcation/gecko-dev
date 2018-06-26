@@ -126,6 +126,8 @@ extern srtp_cipher_type_t srtp_aes_gcm_128;
 extern srtp_cipher_type_t srtp_aes_gcm_256;
 extern srtp_cipher_type_t srtp_aes_gcm_128_double;
 extern srtp_cipher_type_t srtp_aes_gcm_256_double;
+extern srtp_cipher_type_t srtp_aes_kw_128;
+extern srtp_cipher_type_t srtp_aes_kw_256;
 #endif
 
 int main(int argc, char *argv[])
@@ -234,6 +236,8 @@ int main(int argc, char *argv[])
         cipher_driver_self_test(&srtp_aes_gcm_256);
         cipher_driver_self_test(&srtp_aes_gcm_128_double);
         cipher_driver_self_test(&srtp_aes_gcm_256_double);
+        cipher_driver_self_test(&srtp_aes_kw_128);
+        cipher_driver_self_test(&srtp_aes_kw_256);
 #endif
     }
 

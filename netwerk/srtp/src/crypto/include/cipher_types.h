@@ -53,6 +53,8 @@ extern const srtp_cipher_type_t srtp_aes_gcm_128;
 extern const srtp_cipher_type_t srtp_aes_gcm_256;
 extern const srtp_cipher_type_t srtp_aes_gcm_128_double;
 extern const srtp_cipher_type_t srtp_aes_gcm_256_double;
+extern const srtp_cipher_type_t srtp_aes_kw_128;
+extern const srtp_cipher_type_t srtp_aes_kw_256;
 #endif
 
 /*
@@ -76,6 +78,7 @@ extern srtp_debug_module_t srtp_mod_aes_icm;
 #ifdef GCM
 extern srtp_debug_module_t srtp_mod_aes_gcm;
 extern srtp_debug_module_t srtp_mod_aes_gcm_double;
+extern srtp_debug_module_t srtp_mod_aes_kw;
 #endif
 
 /* debug modules for auth types */

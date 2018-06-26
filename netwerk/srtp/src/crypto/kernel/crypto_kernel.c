@@ -164,6 +164,20 @@ srtp_err_status_t srtp_crypto_kernel_init()
     if (status) {
         return status;
     }
+    status = srtp_crypto_kernel_load_cipher_type(&srtp_aes_kw_128,
+                                                 SRTP_AES_KW_128);
+    if (status) {
+        return status;
+    }
+    status = srtp_crypto_kernel_load_cipher_type(&srtp_aes_kw_256,
+                                                 SRTP_AES_KW_256);
+    if (status) {
+        return status;
+    }
+    status = srtp_crypto_kernel_load_debug_module(&srtp_mod_aes_kw);
+    if (status) {
+        return status;
+    }
 #endif
 
     /* load auth func types */

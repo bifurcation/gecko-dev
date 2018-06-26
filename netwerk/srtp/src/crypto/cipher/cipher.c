@@ -92,6 +92,9 @@ srtp_err_status_t srtp_cipher_set_iv(srtp_cipher_t *c,
     if (!c || !c->type || !c->state) {
         return (srtp_err_status_bad_param);
     }
+    if (!((c)->type)->set_iv) {
+        return (srtp_err_status_no_such_op);
+    }
 
     return (((c)->type)->set_iv(((c)->state), iv, direction));
 }
@@ -268,12 +271,14 @@ srtp_err_status_t srtp_cipher_type_test(
                     srtp_octet_string_hex_string(
                         buffer, test_case->plaintext_length_octets));
 
-        /* set the initialization vector */
-        status = srtp_cipher_set_iv(c, (uint8_t *)test_case->idx,
-                                    srtp_direction_encrypt);
-        if (status) {
-            srtp_cipher_dealloc(c);
-            return status;
+        /* set the initialization vector, if provided */
+        if (test_case->idx) {
+            status = srtp_cipher_set_iv(c, (uint8_t *)test_case->idx,
+                                        srtp_direction_encrypt);
+            if (status) {
+                srtp_cipher_dealloc(c);
+                return status;
+            }
         }
 
         if (c->algorithm == SRTP_AES_GCM_128 ||
@@ -379,11 +384,13 @@ srtp_err_status_t srtp_cipher_type_test(
                         buffer, test_case->plaintext_length_octets));
 
         /* set the initialization vector */
-        status = srtp_cipher_set_iv(c, (uint8_t *)test_case->idx,
-                                    srtp_direction_decrypt);
-        if (status) {
-            srtp_cipher_dealloc(c);
-            return status;
+        if (test_case->idx) {
+            status = srtp_cipher_set_iv(c, (uint8_t *)test_case->idx,
+                                        srtp_direction_decrypt);
+            if (status) {
+                srtp_cipher_dealloc(c);
+                return status;
+            }
         }
 
         if (c->algorithm == SRTP_AES_GCM_128 ||
@@ -473,7 +480,8 @@ srtp_err_status_t srtp_cipher_type_test(
         uint8_t iv[MAX_KEY_LEN];
 
         /* choose a length at random (leaving room for IV and padding) */
-        length = rand() % (SELF_TEST_BUF_OCTETS - 64);
+        /* ensure that there's always at least one byte of plaintext */
+        length = rand() % (SELF_TEST_BUF_OCTETS - 63) + 1;
         debug_print(srtp_mod_cipher, "random plaintext length %d\n", length);
         status = srtp_cipher_rand(buffer, length);
         if (status) {
@@ -514,12 +522,15 @@ srtp_err_status_t srtp_cipher_type_test(
             return status;
         }
 
-        /* set initialization vector */
-        status = srtp_cipher_set_iv(c, (uint8_t *)test_case->idx,
-                                    srtp_direction_encrypt);
-        if (status) {
-            srtp_cipher_dealloc(c);
-            return status;
+        /* set initialization vector when required */
+        if (c->algorithm != SRTP_AES_KW_128 &&
+            c->algorithm != SRTP_AES_KW_256) {
+            status = srtp_cipher_set_iv(c, (uint8_t *)test_case->idx,
+                                        srtp_direction_encrypt);
+            if (status) {
+                srtp_cipher_dealloc(c);
+                return status;
+            }
         }
 
         if (c->algorithm == SRTP_AES_GCM_128 ||
@@ -573,12 +584,17 @@ srtp_err_status_t srtp_cipher_type_test(
             srtp_cipher_dealloc(c);
             return status;
         }
-        status = srtp_cipher_set_iv(c, (uint8_t *)test_case->idx,
-                                    srtp_direction_decrypt);
-        if (status) {
-            srtp_cipher_dealloc(c);
-            return status;
+
+        if (c->algorithm != SRTP_AES_KW_128 &&
+            c->algorithm != SRTP_AES_KW_256) {
+            status = srtp_cipher_set_iv(c, (uint8_t *)test_case->idx,
+                                        srtp_direction_decrypt);
+            if (status) {
+                srtp_cipher_dealloc(c);
+                return status;
+            }
         }
+
         if (c->algorithm == SRTP_AES_GCM_128 ||
             c->algorithm == SRTP_AES_GCM_256 ||
             c->algorithm == SRTP_AES_GCM_128_DOUBLE ||

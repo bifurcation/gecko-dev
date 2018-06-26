@@ -114,6 +114,16 @@
 #define SRTP_AES_GCM_256_DOUBLE 9
 
 /*
+ * AES-128 Key Wrap
+ */
+#define SRTP_AES_KW_128 10
+
+/*
+ * AES-256 Key Wrap
+ */
+#define SRTP_AES_KW_256 11
+
+/*
  * The null authentication function performs no authentication.
  *
  * The NULL_AUTH function does nothing, and can be selected to indicate
