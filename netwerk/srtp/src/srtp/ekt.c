@@ -97,9 +97,6 @@ typedef struct {
 #define EKT_TAG_TYPE_SHORT 0x00
 #define EKT_TAG_TYPE_LONG  0x02
 
-void ekt_hello() {
-  // do nothing
-}
 
 srtp_err_status_t
 ekt_create(ekt_t *ekt, ekt_spi_t spi, ekt_cipher_t cipher, uint8_t *key, size_t key_size) {

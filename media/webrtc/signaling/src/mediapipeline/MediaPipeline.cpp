@@ -939,6 +939,23 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
     return res;
   }
 
+  uint8_t ekt_cipher_suite;
+  SSLEKTKey ssl_ekt_key;
+  SSLEKTKey *ekt_key = nullptr;
+  res = dtls->GetEktCipher(&ekt_cipher_suite);
+  if (NS_SUCCEEDED(res)) {
+    // we have ekt cipher negotiated. check if there was ektKey set
+    res = dtls->GetEktKey(&ssl_ekt_key);
+    if (NS_FAILED(res)) {
+      CSFLogError(LOGTAG, "Failed to negotiate SRTP EKT. This is an error");
+      aInfo.mState = StateType::MP_CLOSED;
+      UpdateRtcpMuxState(aInfo);
+      return res;
+    }
+    // set the ekt key to be used on the SRTP
+    ekt_key = &ssl_ekt_key;
+  }
+
   unsigned int key_size = SrtpFlow::KeySize(cipher_suite);
   unsigned int salt_size = SrtpFlow::SaltSize(cipher_suite);
   unsigned int master_key_size = key_size + salt_size;
@@ -966,10 +983,21 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
   offset += key_size;
   memcpy(server_write_key, srtp_block + offset, key_size);
   offset += key_size;
-  memcpy(client_write_key + key_size, srtp_block + offset, salt_size);
-  offset += salt_size;
-  memcpy(server_write_key + key_size, srtp_block + offset, salt_size);
-  offset += salt_size;
+  if (ekt_key != nullptr) {
+    // The master salt length should match salt_size,
+    // adding check here to ensure if we don't go past the buffer.
+    MOZ_ASSERT(ekt_key->srtpMasterSaltLength <= salt_size);
+    // overwrite the master salt from the SSLEKTKey
+    memcpy(client_write_key + key_size, ekt_key->srtpMasterSalt, salt_size);
+    offset += salt_size;
+    memcpy(server_write_key + key_size, ekt_key->srtpMasterSalt, salt_size);
+    offset += salt_size;
+  } else {
+    memcpy(client_write_key + key_size, srtp_block + offset, salt_size);
+    offset += salt_size;
+    memcpy(server_write_key + key_size, srtp_block + offset, salt_size);
+    offset += salt_size;
+  }
   MOZ_ASSERT(offset == export_size);
 
   unsigned char* write_key;
@@ -982,29 +1010,12 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
     read_key = client_write_key;
   }
 
-  uint8_t ekt_cipher_suite;
-  res = dtls->GetEktCipher(&ekt_cipher_suite);
-  if (NS_FAILED(res)) {
-    CSFLogError(LOGTAG, "Failed to negotiate SRTP-EKT. This is an error");
-    aInfo.mState = StateType::MP_CLOSED;
-    UpdateRtcpMuxState(aInfo);
-    return res;
-  }
-
-  SSLEKTKey ssl_ekt_key;
-  res = dtls->GetEktKey(&ssl_ekt_key);
-  if (NS_FAILED(res)) {
-    CSFLogError(LOGTAG, "Failed to negotiate SRTP EKT. This is an error");
-    aInfo.mState = StateType::MP_CLOSED;
-    UpdateRtcpMuxState(aInfo);
-    return res;
-  }
 
   MOZ_ASSERT(!aInfo.mSendSrtp && !aInfo.mRecvSrtp);
   aInfo.mSendSrtp =
-    SrtpFlow::Create(cipher_suite, false, write_key, master_key_size, ekt_cipher_suite, &ssl_ekt_key);
+    SrtpFlow::Create(cipher_suite, false, write_key, master_key_size, ekt_cipher_suite, ekt_key);
   aInfo.mRecvSrtp =
-    SrtpFlow::Create(cipher_suite, true, read_key, master_key_size, ekt_cipher_suite, &ssl_ekt_key);
+    SrtpFlow::Create(cipher_suite, true, read_key, master_key_size, ekt_cipher_suite, ekt_key);
   if (!aInfo.mSendSrtp || !aInfo.mRecvSrtp) {
     CSFLogError(
       LOGTAG, "Couldn't create SRTP flow for %s", ToString(aInfo.mType));

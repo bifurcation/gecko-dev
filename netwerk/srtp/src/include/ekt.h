@@ -58,6 +58,7 @@ typedef uint8_t ekt_cipher_t;
 
 typedef uint32_t ekt_flags_t;
 #define EKT_FLAG_SHORT_TAG 0x00000001
+#define EKT_FLAG_HALF_KEY  0x00000002
 
 #define MAX_EKT_KEY_LEN 32
 
