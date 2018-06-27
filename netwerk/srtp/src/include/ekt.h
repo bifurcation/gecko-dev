@@ -44,9 +44,11 @@
 #ifndef EKT_EKT_H
 #define EKT_EKT_H
 
-#include "config.h"
 #include "srtp.h"
-#include "integers.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 typedef uint16_t ekt_spi_t;
 
@@ -90,5 +92,9 @@ ekt_add_tag(ekt_t ctx, srtp_t session, uint8_t *pkt, int *pkt_size, ekt_flags_t 
 /* TODO-RLB: Some of these arguments can be marked const */
 srtp_err_status_t
 ekt_process_tag(ekt_t ctx, srtp_t session, uint8_t *pkt, int *pkt_size);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* EKT_EKT_H */

@@ -12,6 +12,7 @@
 #include "mozilla/RefPtr.h"
 #include "nsISupportsImpl.h"
 #include "srtp.h"
+#include "ekt.h"
 
 namespace mozilla {
 
@@ -32,7 +33,9 @@ class SrtpFlow {
   static RefPtr<SrtpFlow> Create(int cipher_suite,
                                           bool inbound,
                                           const void *key,
-                                          size_t key_len);
+                                          size_t key_len,
+                                          int ekt_cipher_suite,
+                                          void* ekt_key);
 
   nsresult ProtectRtp(void *in, int in_len,
                       int max_len, int *out_len);
@@ -58,8 +61,8 @@ class SrtpFlow {
   static bool initialized;  // Was libsrtp initialized? Only happens once.
 
   srtp_t session_;
+  ekt_t ekt_;
 };
 
 }  // End of namespace
 #endif
-

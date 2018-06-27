@@ -44,7 +44,9 @@ unsigned int SrtpFlow::SaltSize(int cipher_suite) {
 RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
                                            bool inbound,
                                            const void *key,
-                                           size_t key_len) {
+                                           size_t key_len,
+                                           int ekt_cipher_suite,
+                                           void* ssl_ekt_key) {
   nsresult res = Init();
   if (!NS_SUCCEEDED(res))
     return nullptr;
@@ -90,6 +92,16 @@ RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
   r = srtp_create(&flow->session_, &policy);
   if (r != srtp_err_status_ok) {
     CSFLogError(LOGTAG, "Error creating srtp session");
+    return nullptr;
+  }
+
+  // setup ekt context
+  SSLEKTKey *ekt_key_info = static_cast<SSLEKTKey *>(ssl_ekt_key);
+  r = ekt_create(&flow->ekt_, ekt_key_info->ektSPI, ekt_cipher_suite, ekt_key_info->ektKeyValue, 
+                 ekt_key_info->ektKeyLength);
+  
+  if (r != srtp_err_status_ok) {
+    CSFLogError(LOGTAG, "Error creating ekt context");
     return nullptr;
   }
 

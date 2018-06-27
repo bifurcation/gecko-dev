@@ -1189,6 +1189,21 @@ nsresult TransportLayerDtls::GetEktCipher(uint8_t *cipher) const {
   return NS_OK;
 }
 
+nsresult TransportLayerDtls::GetEktKey(void* ssl_ekt_key) const {
+  CheckThread();
+  if (state_ != TS_OPEN) {
+    return NS_ERROR_NOT_AVAILABLE;
+  }
+
+  SECStatus rv = SSL_GetEKTKey(ssl_fd_.get(), static_cast<SSLEKTKey*>(ssl_ekt_key));
+  if (rv != SECSuccess) {
+    MOZ_MTLOG(ML_DEBUG, "No EKT Key found");
+    return NS_ERROR_FAILURE;
+  }
+
+  return NS_OK;
+}
+
 nsresult TransportLayerDtls::ExportKeyingMaterial(const std::string& label,
                                                   bool use_context,
                                                   const std::string& context,

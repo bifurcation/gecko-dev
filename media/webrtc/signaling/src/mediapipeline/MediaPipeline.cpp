@@ -46,6 +46,7 @@
 #include "nspr.h"
 #include "runnable_utils.h"
 #include "srtp.h"
+#include "ssl.h"
 #include "transportflow.h"
 #include "transportlayer.h"
 #include "transportlayerdtls.h"
@@ -973,7 +974,6 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
 
   unsigned char* write_key;
   unsigned char* read_key;
-
   if (dtls->role() == TransportLayerDtls::CLIENT) {
     write_key = client_write_key;
     read_key = server_write_key;
@@ -982,11 +982,29 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
     read_key = client_write_key;
   }
 
+  uint8_t ekt_cipher_suite;
+  res = dtls->GetEktCipher(&ekt_cipher_suite);
+  if (NS_FAILED(res)) {
+    CSFLogError(LOGTAG, "Failed to negotiate SRTP-EKT. This is an error");
+    aInfo.mState = StateType::MP_CLOSED;
+    UpdateRtcpMuxState(aInfo);
+    return res;
+  }
+
+  SSLEKTKey ssl_ekt_key;
+  res = dtls->GetEktKey(&ssl_ekt_key);
+  if (NS_FAILED(res)) {
+    CSFLogError(LOGTAG, "Failed to negotiate SRTP EKT. This is an error");
+    aInfo.mState = StateType::MP_CLOSED;
+    UpdateRtcpMuxState(aInfo);
+    return res;
+  }
+
   MOZ_ASSERT(!aInfo.mSendSrtp && !aInfo.mRecvSrtp);
   aInfo.mSendSrtp =
-    SrtpFlow::Create(cipher_suite, false, write_key, master_key_size);
+    SrtpFlow::Create(cipher_suite, false, write_key, master_key_size, ekt_cipher_suite, &ssl_ekt_key);
   aInfo.mRecvSrtp =
-    SrtpFlow::Create(cipher_suite, true, read_key, master_key_size);
+    SrtpFlow::Create(cipher_suite, true, read_key, master_key_size, ekt_cipher_suite, &ssl_ekt_key);
   if (!aInfo.mSendSrtp || !aInfo.mRecvSrtp) {
     CSFLogError(
       LOGTAG, "Couldn't create SRTP flow for %s", ToString(aInfo.mType));
