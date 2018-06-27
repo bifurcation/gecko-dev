@@ -98,7 +98,7 @@ RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
     CSFLogError(LOGTAG, "Error creating srtp session");
     return nullptr;
   }
-
+  
   if (ssl_ekt_key != nullptr) {
     // setup ekt context
     SSLEKTKey *ekt_key_info = static_cast<SSLEKTKey *>(ssl_ekt_key);

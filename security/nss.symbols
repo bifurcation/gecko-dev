@@ -680,6 +680,7 @@ SSL_GetPreliminaryChannelInfo
 SSL_GetSRTPCipher
 SSL_GetEKTCipher
 SSL_GetEKTKey
+SSL_SetEKTKey
 SSL_GetStatistics
 SSL_HandshakeCallback
 SSL_HandshakeNegotiatedExtension

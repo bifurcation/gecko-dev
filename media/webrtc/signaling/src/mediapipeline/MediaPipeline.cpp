@@ -942,6 +942,7 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
   uint8_t ekt_cipher_suite;
   SSLEKTKey *ekt_key = nullptr;
   res = dtls->GetEktCipher(&ekt_cipher_suite);
+
   if (NS_SUCCEEDED(res)) {
     // we have ekt cipher negotiated. check if there was ektKey set
     SSLEKTKey ssl_ekt_key;
@@ -954,6 +955,9 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
     }
     // set the ekt key to be used on the SRTP
     ekt_key = &ssl_ekt_key;
+    printf("Suhas: Got EKTKey %p ", ekt_key);
+  } else {
+    printf("Suhas: NO EKT CIPHER Suite %d ", int(res));
   }
 
   unsigned int key_size = SrtpFlow::KeySize(cipher_suite);

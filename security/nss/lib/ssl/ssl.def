@@ -156,6 +156,7 @@ SSL_SetSRTPCiphers;
 SSL_GetEKTCipher;
 SSL_SetEKTCiphers;
 SSL_GetEKTKey;
+SSL_SetEKTKey;
 ;+    local:
 ;+*;
 ;+};

@@ -770,6 +770,7 @@ bool TransportLayerDtls::SetupCipherSuites(UniquePRFileDesc& ssl_fd) const {
 
   // Set the EKT Ciphers
   if (!ekt_ciphers_.empty()) {
+    printf("\nSuhas: Setting EKT Ciphers for %d, num %d\n", role_, ekt_ciphers_.size());
     // Note: std::vector is guaranteed to contiguous
     rv = SSL_SetEKTCiphers(ssl_fd.get(), &ekt_ciphers_[0],
                             ekt_ciphers_.size());
@@ -777,6 +778,35 @@ bool TransportLayerDtls::SetupCipherSuites(UniquePRFileDesc& ssl_fd) const {
       MOZ_MTLOG(ML_ERROR, "Couldn't set EKT cipher suite");
       return false;
     }
+
+    // this is a hack to enable testing EKT negotiation.
+    // TODO: Remove this once verified its working
+    if (role_ == TransportLayerDtls::SERVER) {
+      SSLEKTKey ekt_key;
+
+      uint8_t key[] = {
+        0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 
+        0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
+      };
+
+      uint8_t salt[] = {
+        0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9,
+        0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1,
+      };
+
+      ekt_key.ektSPI = 0xA0A0;
+      ekt_key.ektTTL = 0x1024;
+      memcpy(ekt_key.ektKeyValue, key, 16);
+      ekt_key.ektKeyLength = 16;
+      memcpy(ekt_key.srtpMasterSalt, salt, 14);
+      ekt_key.srtpMasterSaltLength = 14;
+      rv = SSL_SetEKTKey(ssl_fd.get(), &ekt_key);
+      if (rv != SECSuccess) {
+        printf("Suhas: Couldn't set Hardcoded EKT Key ");
+        MOZ_MTLOG(ML_ERROR, "Couldn't set Hardcoded EKT Key.");
+        return false;
+      }
+   }
   }
 
   for (const auto& cipher : EnabledCiphers) {

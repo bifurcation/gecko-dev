@@ -642,12 +642,15 @@ PeerConnectionMedia::UpdateTransportFlow(
 
   std::vector<uint8_t> ektCiphers;
   ektCiphers.push_back(EKT_AESKW_128);
-  ektCiphers.push_back(EKT_AESKW_256);
-
+  // Commenting this for testing purposes
+  // ektCiphers.push_back(EKT_AESKW_256);
+  printf("Setting EKTCipher for DTLS ROLE %d\n", dtls->role());
   rv = dtls->SetEktCiphers(ektCiphers);
   if (NS_FAILED(rv)) {
     CSFLogError(LOGTAG, "Couldn't set EKT ciphers");
     return rv;
+  } else {
+    printf("Setting EKTCipher for DTLS ROLE %d Succeeded.\n", dtls->role());
   }
 
   
