@@ -164,7 +164,7 @@ nsresult SrtpFlow::ProtectRtp(void *in, int in_len,
     return NS_ERROR_FAILURE;
   }
 
-  if (ekt) {
+  if (ekt_) {
     // add the half ekt tag
     r = ekt_add_tag(ekt_, session_, static_cast<uint8_t *>(in), &len, EKT_FLAG_HALF_KEY);
   }
@@ -189,9 +189,10 @@ nsresult SrtpFlow::UnprotectRtp(void *in, int in_len,
   if (NS_FAILED(res))
     return res;
 
+  srtp_err_status_t r;
   int len = in_len;
-  if (ekt) {
-    srtp_err_status_t r = ekt_process_tag(ekt_, session_, static_cast<uint8_t *>(in), &len);
+  if (ekt_) {
+    r = ekt_process_tag(ekt_, session_, static_cast<uint8_t *>(in), &len);
     if (r != srtp_err_status_ok) {
       CSFLogError(LOGTAG, "Error processing SRTP EKT Tag=%d", (int)r);
       return NS_ERROR_FAILURE;
