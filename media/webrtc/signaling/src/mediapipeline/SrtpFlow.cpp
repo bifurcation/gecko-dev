@@ -30,6 +30,9 @@ SrtpFlow::~SrtpFlow() {
   if (session_) {
     srtp_dealloc(session_);
   }
+  if(ekt_) {
+    ekt_dealloc(ekt_);
+  }
 }
 
 unsigned int SrtpFlow::KeySize(int cipher_suite) {
@@ -161,8 +164,10 @@ nsresult SrtpFlow::ProtectRtp(void *in, int in_len,
     return NS_ERROR_FAILURE;
   }
 
-  // add the half ekt tag
-  r = ekt_add_tag(ekt_, session_, static_cast<uint8_t *>(in), &len, EKT_FLAG_HALF_KEY);
+  if (ekt) {
+    // add the half ekt tag
+    r = ekt_add_tag(ekt_, session_, static_cast<uint8_t *>(in), &len, EKT_FLAG_HALF_KEY);
+  }
 
   if (r != srtp_err_status_ok) {
     CSFLogError(LOGTAG, "Error adding SRTP EKT tag to the packet=%d", (int)r);
@@ -185,14 +190,14 @@ nsresult SrtpFlow::UnprotectRtp(void *in, int in_len,
     return res;
 
   int len = in_len;
-  srtp_err_status_t r = ekt_process_tag(ekt_, session_, static_cast<uint8_t *>(in), &len);
-
-  if (r != srtp_err_status_ok) {
-    CSFLogError(LOGTAG, "Error processing SRTP EKT Tag=%d", (int)r);
-    return NS_ERROR_FAILURE;
+  if (ekt) {
+    srtp_err_status_t r = ekt_process_tag(ekt_, session_, static_cast<uint8_t *>(in), &len);
+    if (r != srtp_err_status_ok) {
+      CSFLogError(LOGTAG, "Error processing SRTP EKT Tag=%d", (int)r);
+      return NS_ERROR_FAILURE;
+    }
+    MOZ_ASSERT(len <= max_len);
   }
-
-  MOZ_ASSERT(len <= max_len);
 
   r = srtp_unprotect(session_, in, &len);
 

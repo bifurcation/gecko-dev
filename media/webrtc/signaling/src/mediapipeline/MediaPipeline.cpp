@@ -940,11 +940,11 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
   }
 
   uint8_t ekt_cipher_suite;
-  SSLEKTKey ssl_ekt_key;
   SSLEKTKey *ekt_key = nullptr;
   res = dtls->GetEktCipher(&ekt_cipher_suite);
   if (NS_SUCCEEDED(res)) {
     // we have ekt cipher negotiated. check if there was ektKey set
+    SSLEKTKey ssl_ekt_key;
     res = dtls->GetEktKey(&ssl_ekt_key);
     if (NS_FAILED(res)) {
       CSFLogError(LOGTAG, "Failed to negotiate SRTP EKT. This is an error");

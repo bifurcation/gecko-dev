@@ -182,6 +182,13 @@ ekt_add_tag(ekt_t ekt, srtp_t session, uint8_t *pkt, int *pkt_size, ekt_flags_t 
     return err;
   }
 
+
+  // If the HALF_KEY flag is set, only the first half of the key is
+  // sent in the EKT tag.
+  if (flags & EKT_FLAG_HALF_KEY) {
+    master_key_size >>= 1;
+  }
+
   // Construct EKT plaintext in place
   int tag_start = *pkt_size;
   int tag_end = *pkt_size;
