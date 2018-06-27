@@ -770,7 +770,6 @@ bool TransportLayerDtls::SetupCipherSuites(UniquePRFileDesc& ssl_fd) const {
 
   // Set the EKT Ciphers
   if (!ekt_ciphers_.empty()) {
-    printf("\nSuhas: Setting EKT Ciphers for %d, num %d\n", role_, ekt_ciphers_.size());
     // Note: std::vector is guaranteed to contiguous
     rv = SSL_SetEKTCiphers(ssl_fd.get(), &ekt_ciphers_[0],
                             ekt_ciphers_.size());
@@ -802,7 +801,6 @@ bool TransportLayerDtls::SetupCipherSuites(UniquePRFileDesc& ssl_fd) const {
       ekt_key.srtpMasterSaltLength = 14;
       rv = SSL_SetEKTKey(ssl_fd.get(), &ekt_key);
       if (rv != SECSuccess) {
-        printf("Suhas: Couldn't set Hardcoded EKT Key ");
         MOZ_MTLOG(ML_ERROR, "Couldn't set Hardcoded EKT Key.");
         return false;
       }

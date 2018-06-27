@@ -1981,6 +1981,7 @@ SECStatus
 ssl_ClientHandleSupportedEKTCiphersXtn(const sslSocket *ss, TLSExtensionData *xtnData,
                                        SECItem *data)
 {
+
     if (!data->data || (data->len != 1)) {
         ssl3_ExtDecodeError(ss);
         return SECFailure;
@@ -2023,7 +2024,7 @@ ssl_ServerHandleSupportedEKTCiphersXtn(const sslSocket *ss, TLSExtensionData *xt
     /* Walk through the offered list and pick the most preferred of our
      * ciphers, if any */
     for (i = 0; !found && i < ss->ssl3.ektCipherCount; i++) {
-        for (j = 0; j + 1 < ciphers.len; j ++) {
+        for (j = 0; j < ciphers.len; j ++) {
             cipher = ciphers.data[j];
             if (cipher == ss->ssl3.ektCiphers[i]) {
                 found = PR_TRUE;
