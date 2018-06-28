@@ -778,8 +778,8 @@ bool TransportLayerDtls::SetupCipherSuites(UniquePRFileDesc& ssl_fd) const {
       return false;
     }
 
-    // this is a hack to enable testing EKT negotiation.
-    // TODO: Remove this once verified its working
+    // This raw key is a hack to enable testing EKT negotiation.
+    // TODO: Remove this before landing this code.
     if (role_ == TransportLayerDtls::SERVER) {
       SSLEKTKey ekt_key;
 
