@@ -772,7 +772,7 @@ bool TransportLayerDtls::SetupCipherSuites(UniquePRFileDesc& ssl_fd) const {
   if (!ekt_ciphers_.empty()) {
     // Note: std::vector is guaranteed to contiguous
     rv = SSL_SetEKTCiphers(ssl_fd.get(), &ekt_ciphers_[0],
-                            ekt_ciphers_.size());
+                           ekt_ciphers_.size());
     if (rv != SECSuccess) {
       MOZ_MTLOG(ML_ERROR, "Couldn't set EKT cipher suite");
       return false;
@@ -784,7 +784,7 @@ bool TransportLayerDtls::SetupCipherSuites(UniquePRFileDesc& ssl_fd) const {
       SSLEKTKey ekt_key;
 
       uint8_t key[] = {
-        0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8, 
+        0xff, 0xfe, 0xfd, 0xfc, 0xfb, 0xfa, 0xf9, 0xf8,
         0xf7, 0xf6, 0xf5, 0xf4, 0xf3, 0xf2, 0xf1, 0xf0,
       };
 
@@ -1217,13 +1217,13 @@ nsresult TransportLayerDtls::GetEktCipher(uint8_t *cipher) const {
   return NS_OK;
 }
 
-nsresult TransportLayerDtls::GetEktKey(void* ssl_ekt_key) const {
+nsresult TransportLayerDtls::GetEktKey(SSLEKTKey* ssl_ekt_key) const {
   CheckThread();
   if (state_ != TS_OPEN) {
     return NS_ERROR_NOT_AVAILABLE;
   }
 
-  SECStatus rv = SSL_GetEKTKey(ssl_fd_.get(), static_cast<SSLEKTKey*>(ssl_ekt_key));
+  SECStatus rv = SSL_GetEKTKey(ssl_fd_.get(), ssl_ekt_key);
   if (rv != SECSuccess) {
     MOZ_MTLOG(ML_DEBUG, "No EKT Key found");
     return NS_ERROR_FAILURE;

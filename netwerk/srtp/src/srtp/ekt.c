@@ -97,7 +97,6 @@ typedef struct {
 #define EKT_TAG_TYPE_SHORT 0x00
 #define EKT_TAG_TYPE_LONG  0x02
 
-
 srtp_err_status_t
 ekt_create(ekt_t *ekt, ekt_spi_t spi, ekt_cipher_t cipher, uint8_t *key, size_t key_size) {
   srtp_err_status_t err = srtp_err_status_ok;
@@ -111,8 +110,7 @@ ekt_create(ekt_t *ekt, ekt_spi_t spi, ekt_cipher_t cipher, uint8_t *key, size_t 
   if (ctx == NULL) {
     return srtp_err_status_alloc_fail;
   }
-  *ekt = ctx;
-
+  memset(ctx, 0, sizeof(ekt_ctx_t));
   ctx->spi = spi;
 
   /* Map EKT cipher IDs to internal cipher types */
@@ -143,6 +141,7 @@ ekt_create(ekt_t *ekt, ekt_spi_t spi, ekt_cipher_t cipher, uint8_t *key, size_t 
     return srtp_err_status_init_fail;
   }
 
+  *ekt = ctx;
   return srtp_err_status_ok;
 }
 
@@ -181,7 +180,6 @@ ekt_add_tag(ekt_t ekt, srtp_t session, uint8_t *pkt, int *pkt_size, ekt_flags_t 
   if (err != srtp_err_status_ok) {
     return err;
   }
-
 
   // If the HALF_KEY flag is set, only the first half of the key is
   // sent in the EKT tag.
@@ -271,8 +269,14 @@ ekt_process_tag(ekt_t ekt, srtp_t session, uint8_t *pkt, int *pkt_size) {
   uint8_t *master_key = pkt + pkt_end + 1;
 
   ekt_plaintext_trailer_t *pt_trailer = (ekt_plaintext_trailer_t*) (master_key + master_key_size);
-  uint32_t ssrc = htonl(pt_trailer->ssrc);
-  uint32_t roc = htonl(pt_trailer->roc);
+  uint32_t ssrc = pt_trailer->ssrc;
+  uint32_t roc = ntohl(pt_trailer->roc);
+
+  // Check that the SSRC is correct for this packet
+  srtp_hdr_t *hdr = (srtp_hdr_t*) pkt;
+  if (ssrc != hdr->ssrc) {
+    return srtp_err_status_auth_fail;
+  }
 
   // Get or create a stream for this SSRC
   srtp_stream_t stream;

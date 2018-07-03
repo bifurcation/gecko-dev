@@ -26,6 +26,8 @@
 #include "transportflow.h"
 #include "transportlayer.h"
 
+#include "ssl.h"
+
 namespace mozilla {
 
 struct Packet;
@@ -88,9 +90,7 @@ class TransportLayerDtls final : public TransportLayer {
 
   nsresult SetEktCiphers(std::vector<uint8_t> ciphers);
   nsresult GetEktCipher(uint8_t *cipher) const;
-  // Key is of type SSLEKTKey. Using void* to avoid including ssl.h
-  // TODO: Declare the SSLEKTKey outside nss/ as well.
-  nsresult GetEktKey(void* ssl_ekt_key) const;
+  nsresult GetEktKey(SSLEKTKey* ssl_ekt_key) const;
 
   nsresult ExportKeyingMaterial(const std::string& label,
                                 bool use_context,
