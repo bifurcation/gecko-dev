@@ -986,7 +986,7 @@ MediaPipeline::TransportReady_s(TransportInfo& aInfo)
   if (using_ekt) {
     // The master salt length should match salt_size,
     // adding check here to ensure if we don't go past the buffer.
-    MOZ_ASSERT(ekt_key->srtpMasterSaltLength == salt_size);
+    MOZ_ASSERT(ekt_key.srtpMasterSaltLength == salt_size);
     // overwrite the master salt from the SSLEKTKey
     memcpy(client_write_key + key_size, ekt_key.srtpMasterSalt, salt_size);
     offset += salt_size;
