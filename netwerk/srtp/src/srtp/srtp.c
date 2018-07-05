@@ -236,8 +236,8 @@ srtp_err_status_t srtp_stream_dealloc(srtp_stream_ctx_t *stream,
             /*
              * zeroize the salt value
              */
-            octet_string_set_to_zero(session_keys->salt, SRTP_AEAD_SALT_LEN);
-            octet_string_set_to_zero(session_keys->c_salt, SRTP_AEAD_SALT_LEN);
+            octet_string_set_to_zero(session_keys->salt, MAX_SRTP_SALT_LEN);
+            octet_string_set_to_zero(session_keys->c_salt, MAX_SRTP_SALT_LEN);
 
             if (session_keys->mki_id) {
                 octet_string_set_to_zero(session_keys->mki_id,
@@ -497,16 +497,16 @@ srtp_err_status_t srtp_stream_clone(const srtp_stream_ctx_t *stream_template,
 
         /* Copy the cached master key */
         session_keys->master_key_size = template_session_keys->master_key_size;
-        session_keys->master_salt_size = template_session_keys->master_key_size;
+        session_keys->master_salt_size = template_session_keys->master_salt_size;
         memcpy(session_keys->master_key, template_session_keys->master_key,
                template_session_keys->master_key_size +
                session_keys->master_salt_size);
 
         /* Copy the salt values */
         memcpy(session_keys->salt, template_session_keys->salt,
-               SRTP_AEAD_SALT_LEN);
+               MAX_SRTP_SALT_LEN);
         memcpy(session_keys->c_salt, template_session_keys->c_salt,
-               SRTP_AEAD_SALT_LEN);
+               MAX_SRTP_SALT_LEN);
 
         /* set key limit to point to that of the template */
         status = srtp_key_limit_clone(template_session_keys->limit,
@@ -1738,7 +1738,7 @@ static void srtp_calc_double_aead_iv(srtp_session_keys_t *session_keys,
     debug_print(mod_srtp, "RTP SALT (outer) = %s\n", v128_hex_string(&salt_outer));
 
     /*
-     * Finally, apply tyhe SALT to the input
+     * Finally, apply the SALT to the input
      */
     v128_xor(iv_inner, &in, &salt_inner);
     v128_xor(iv_outer, &in, &salt_outer);

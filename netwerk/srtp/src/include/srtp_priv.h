@@ -66,6 +66,7 @@ extern "C" {
 #define SRTP_VERSION PACKAGE_VERSION
 
 #define MAX_SRTP_KEY_LEN 256
+#define MAX_SRTP_SALT_LEN 24
 
 typedef struct srtp_stream_ctx_t_ srtp_stream_ctx_t;
 typedef srtp_stream_ctx_t *srtp_stream_t;
@@ -160,8 +161,8 @@ typedef struct srtp_session_keys_t {
     srtp_auth_t *rtp_auth;
     srtp_cipher_t *rtcp_cipher;
     srtp_auth_t *rtcp_auth;
-    uint8_t salt[SRTP_AEAD_SALT_LEN];
-    uint8_t c_salt[SRTP_AEAD_SALT_LEN];
+    uint8_t salt[MAX_SRTP_SALT_LEN];
+    uint8_t c_salt[MAX_SRTP_SALT_LEN];
     uint8_t *mki_id;
     unsigned int mki_size;
     srtp_key_limit_ctx_t *limit;

@@ -48,7 +48,6 @@ extern const srtp_cipher_type_t srtp_null_cipher;
 extern const srtp_cipher_type_t srtp_aes_icm_128;
 extern const srtp_cipher_type_t srtp_aes_icm_256;
 #ifdef GCM
-extern const srtp_cipher_type_t srtp_aes_icm_192;
 extern const srtp_cipher_type_t srtp_aes_gcm_128;
 extern const srtp_cipher_type_t srtp_aes_gcm_256;
 extern const srtp_cipher_type_t srtp_aes_gcm_128_double;
