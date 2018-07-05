@@ -100,8 +100,6 @@ RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
   }
 
   if (ekt_cipher_suite) {
-    printf("\n\n\n !!! Found EKT key, establishing context \n\n\n");
-
     // setup ekt context
     SSLEKTKey *ekt_key_info = static_cast<SSLEKTKey *>(ssl_ekt_key);
     r = ekt_create(&flow->ekt_, ekt_key_info->ektSPI, ekt_cipher_suite, ekt_key_info->ektKeyValue,
@@ -111,9 +109,6 @@ RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
       CSFLogError(LOGTAG, "Error creating ekt context");
       return nullptr;
     }
-    printf("\n\n\n !!! Successfully set up EKT context \n\n\n");
-  } else {
-    printf("\n\n\n !!! No EKT key \n\n\n");
   }
 
   return flow;
@@ -173,11 +168,11 @@ nsresult SrtpFlow::ProtectRtp(void *in, int in_len,
     // add the half ekt tag
     // TODO: Send half key
     r = ekt_add_tag(ekt_, session_, static_cast<uint8_t *>(in), &len, 0);
-  }
 
-  if (r != srtp_err_status_ok) {
-    CSFLogError(LOGTAG, "Error adding SRTP EKT tag to the packet=%d", (int)r);
-    return NS_ERROR_FAILURE;
+    if (r != srtp_err_status_ok) {
+      CSFLogError(LOGTAG, "Error adding SRTP EKT tag to the packet=%d", (int)r);
+      return NS_ERROR_FAILURE;
+    }
   }
 
   MOZ_ASSERT(len <= max_len);
