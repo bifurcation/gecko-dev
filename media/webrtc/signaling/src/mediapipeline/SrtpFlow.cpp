@@ -167,7 +167,7 @@ nsresult SrtpFlow::ProtectRtp(void *in, int in_len,
   if (ekt_) {
     // add the half ekt tag
     // TODO: Send half key
-    r = ekt_add_tag(ekt_, session_, static_cast<uint8_t *>(in), &len, 0);
+    r = ekt_add_tag(ekt_, session_, static_cast<uint8_t *>(in), &len, EKT_FLAG_HALF_KEY);
 
     if (r != srtp_err_status_ok) {
       CSFLogError(LOGTAG, "Error adding SRTP EKT tag to the packet=%d", (int)r);
