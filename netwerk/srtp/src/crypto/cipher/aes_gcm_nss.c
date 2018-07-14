@@ -241,6 +241,16 @@ static srtp_err_status_t srtp_aes_gcm_nss_do_crypto(void *cv, int encrypt,
     c->params.pAAD = c->aad;
     c->params.ulAADLen = c->aad_size;
 
+    if (encrypt) {
+      printf("===== Encrypt =====\n");
+    } else {
+      printf("===== Decrypt =====\n");
+    }
+    printf("key: %s\n", srtp_octet_string_hex_string(c->key, c->key_size));
+    printf("iv:  %s\n", srtp_octet_string_hex_string(c->iv, GCM_IV_LEN));
+    printf("aad: %s\n", srtp_octet_string_hex_string(c->aad, c->aad_size));
+    printf("in:  %s\n", srtp_octet_string_hex_string(buf, *enc_len));
+
     // Reset AAD
     c->aad_size = 0;
 
@@ -268,6 +278,8 @@ static srtp_err_status_t srtp_aes_gcm_nss_do_crypto(void *cv, int encrypt,
                           buf, enc_len, *enc_len,
                           buf, *enc_len);
     }
+
+    printf("out: %s\n", srtp_octet_string_hex_string(buf, *enc_len));
 
     srtp_err_status_t status = (srtp_err_status_ok);
     if (rv != SECSuccess) {

@@ -233,6 +233,9 @@ static srtp_err_status_t srtp_aes_gcm_double_context_init(void *cv,
     debug_print(srtp_mod_aes_gcm_double, "outer key: %s",
                 srtp_octet_string_hex_string(key + base_key_size, base_key_size));
 
+    printf("\n\n\n !!! double key: %s \n\n\n",
+                srtp_octet_string_hex_string(key, 2 * base_key_size));
+
     err = c->outer->type->init(c->outer->state, key + base_key_size);
     if (err != srtp_err_status_ok) {
         return err;
