@@ -127,6 +127,8 @@ char lockStatus[] = "Locks are ENABLED.  ";
 static const PRUint16 srtpCiphers[] = {
     SRTP_AES128_CM_HMAC_SHA1_80,
     SRTP_AES128_CM_HMAC_SHA1_32,
+    SRTP_AEAD_AES_128_GCM,
+    SRTP_AEAD_AES_256_GCM,
     0
 };
 
