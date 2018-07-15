@@ -92,13 +92,6 @@ RefPtr<SrtpFlow> SrtpFlow::Create(int cipher_suite,
   policy.allow_repeat_tx = 1;  // Use Chrome value; needed for NACK mode to work
   policy.next = nullptr;
 
-  printf("\n\n\n Setting default master key: ");
-  for (int i=0; i < key_len; ++i) {
-    printf("%02x", ((const uint8_t*)key)[i]);
-  }
-  printf("\n\n\n");
-
-
   // Now make the session
   r = srtp_create(&flow->session_, &policy);
   if (r != srtp_err_status_ok) {
@@ -167,6 +160,7 @@ nsresult SrtpFlow::ProtectRtp(void *in, int in_len,
   srtp_err_status_t r = srtp_protect(session_, in, &len);
 
   if (r != srtp_err_status_ok) {
+    printf("!!! Error protecting SRTP packet [%d]\n", (int)r);
     CSFLogError(LOGTAG, "Error protecting SRTP packet");
     return NS_ERROR_FAILURE;
   }

@@ -183,7 +183,6 @@ ekt_add_tag(ekt_t ekt, srtp_t session, uint8_t *pkt, int *pkt_size, ekt_flags_t 
 
   // If the HALF_KEY flag is set, only the first half of the key is
   // sent in the EKT tag.
-  uint8_t original_master_key_size = master_key_size;
   if (flags & EKT_FLAG_HALF_KEY) {
     master_key_size >>= 1;
   }
@@ -197,9 +196,6 @@ ekt_add_tag(ekt_t ekt, srtp_t session, uint8_t *pkt, int *pkt_size, ekt_flags_t 
 
   memcpy(pkt + tag_end, master_key, master_key_size);
   tag_end += master_key_size;
-
-  printf("\n\n\n Sending EKT Key: %s\n", srtp_octet_string_hex_string(master_key, original_master_key_size));
-  printf(      "                : %s\n", srtp_octet_string_hex_string(master_key, master_key_size));
 
   ekt_plaintext_trailer_t *pt_trailer = (ekt_plaintext_trailer_t*) (pkt + tag_end);
   pt_trailer->ssrc = htonl(ssrc);
@@ -318,7 +314,6 @@ ekt_process_tag(ekt_t ekt, srtp_t session, uint8_t *pkt, int *pkt_size) {
   // Otherwise, overwrite the first part of the master with the
   // received value
   memcpy(new_master_key, master_key, master_key_size);
-  printf("\n\n\n Setting master key from EKT: %s\n\n\n", srtp_octet_string_hex_string(new_master_key, curr_keys->master_key_size));
 
   // Set master key for this SSRC on session
   srtp_master_key_t master_key_str;
