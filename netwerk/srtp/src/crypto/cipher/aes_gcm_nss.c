@@ -256,6 +256,7 @@ static srtp_err_status_t srtp_aes_gcm_nss_do_crypto(void *cv, int encrypt,
 
     PK11SlotInfo *slot = PK11_GetInternalSlot();
     if (!slot) {
+        printf("=== !!! failed to get slot %08x !!! ===\n", PORT_GetError());
         return (srtp_err_status_cipher_fail);
     }
 
@@ -263,6 +264,8 @@ static srtp_err_status_t srtp_aes_gcm_nss_do_crypto(void *cv, int encrypt,
     PK11SymKey *key = PK11_ImportSymKey(slot, CKM_AES_GCM, PK11_OriginUnwrap,
                                         CKA_ENCRYPT, &key_item, NULL);
     if (!key) {
+        printf("=== !!! failed to import key %08x !!! ===\n", PORT_GetError());
+        return (srtp_err_status_cipher_fail);
         PK11_FreeSlot(slot);
         return (srtp_err_status_cipher_fail);
     }
@@ -279,7 +282,11 @@ static srtp_err_status_t srtp_aes_gcm_nss_do_crypto(void *cv, int encrypt,
                           buf, *enc_len);
     }
 
-    printf("out: %s\n", srtp_octet_string_hex_string(buf, *enc_len));
+    if (rv != SECSuccess) {
+      printf("err: %08x\n", PORT_GetError());
+    } else {
+      printf("out: %s\n", srtp_octet_string_hex_string(buf, *enc_len));
+    }
 
     srtp_err_status_t status = (srtp_err_status_ok);
     if (rv != SECSuccess) {

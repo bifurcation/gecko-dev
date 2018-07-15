@@ -304,16 +304,21 @@ ekt_process_tag(ekt_t ekt, srtp_t session, uint8_t *pkt, int *pkt_size) {
   uint8_t new_master_key[MAX_SRTP_KEY_LEN];
   memcpy(new_master_key, curr_keys->master_key, MAX_SRTP_KEY_LEN);
 
-  // Overwrite the first part of the key with the EKT-provided key
-  printf("\n\n\n");
-  printf(" Before overwrite: %s\n", srtp_octet_string_hex_string(new_master_key, curr_keys->master_key_size));
-  printf("                +: %s\n", srtp_octet_string_hex_string(master_key, master_key_size));
   if (master_key_size > curr_keys->master_key_size) {
     // TODO-RLB: Better error status
     return srtp_err_status_bad_param;
   }
+
+  // If the master key already has the right value, we're done
+  if (memcmp(curr_keys->master_key, master_key, master_key_size) == 0) {
+    *pkt_size = pkt_end;
+    return srtp_err_status_ok;
+  }
+
+  // Otherwise, overwrite the first part of the master with the
+  // received value
   memcpy(new_master_key, master_key, master_key_size);
-  printf("                =: %s\n", srtp_octet_string_hex_string(new_master_key, curr_keys->master_key_size));
+  printf("\n\n\n Setting master key from EKT: %s\n\n\n", srtp_octet_string_hex_string(new_master_key, curr_keys->master_key_size));
 
   // Set master key for this SSRC on session
   srtp_master_key_t master_key_str;

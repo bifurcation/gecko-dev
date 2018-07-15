@@ -248,6 +248,10 @@ static srtp_err_status_t srtp_aes_gcm_double_context_init(void *cv,
  * aes_gcm_double_set_iv(c, iv) splits the IV in two equal halves.
  * The first half is set as the IV for the inner transform, and the
  * second half as the IV for the outer transform.
+ *
+ * Note that this is not the final IV for the inner transform,
+ * because if the SEQ is changed, then the IV needs to get patched
+ * up.
  */
 static srtp_err_status_t srtp_aes_gcm_double_set_iv(
     void *cv,
@@ -270,15 +274,10 @@ static srtp_err_status_t srtp_aes_gcm_double_set_iv(
     debug_print(srtp_mod_aes_gcm_double, "set_iv: %s",
                 srtp_octet_string_hex_string(iv, GCM_IV_LEN + GCM_IV_LEN));
 
-    /* Initialize the inner context */
+    /* Cache the inner IV (to be patched with the SEQ later) */
     debug_print(srtp_mod_aes_gcm_double, "inner iv: %s",
                 srtp_octet_string_hex_string(iv, iv_size));
-
-    err = c->inner->type->set_iv(c->inner->state, iv, direction);
-    if (err != srtp_err_status_ok) {
-        debug_print(srtp_mod_aes_gcm_double, "error setting inner IV: %d", err);
-        return err;
-    }
+    memcpy(c->inner_iv, iv, SRTP_AEAD_SALT_LEN);
 
     /* Initialize the outer context */
     debug_print(srtp_mod_aes_gcm_double, "outer iv: %s",
@@ -307,12 +306,12 @@ static srtp_err_status_t srtp_aes_gcm_double_set_aad(void *cv,
     debug_print(srtp_mod_aes_gcm, "setting AAD: %s",
                 srtp_octet_string_hex_string(aad, aad_size));
 
-    if (aad_size + c->aad_size > GCM_DOUBLE_MAX_AD_LEN) {
+    if (aad_size > GCM_DOUBLE_MAX_AD_LEN) {
         return srtp_err_status_bad_param;
     }
 
-    memcpy(c->aad + c->aad_size, aad, aad_size);
-    c->aad_size += aad_size;
+    memcpy(c->aad, aad, aad_size);
+    c->aad_size = aad_size;
 
     return (srtp_err_status_ok);
 }
@@ -345,6 +344,13 @@ static srtp_err_status_t srtp_aes_gcm_double_encrypt(void *cv,
     int inner_aad_size = RTP_HEADER_SIZE + (4 * cc);
     if (inner_aad_size > c->aad_size) {
         return srtp_err_status_bad_param;
+    }
+
+    /* Set the inner IV */
+    err = c->inner->type->set_iv(c->inner->state, c->inner_iv, c->dir);
+    if (err != srtp_err_status_ok) {
+        debug_print(srtp_mod_aes_gcm_double, "error setting inner IV: %d", err);
+        return err;
     }
 
     /* Set the AAD for the inner transform and reset the X bit */
@@ -487,8 +493,17 @@ static srtp_err_status_t srtp_aes_gcm_double_decrypt(void *cv,
 
     if (config & OHB_MODIFIED_SEQ) {
         *enc_size -= 2;
-        c->aad[2] = buf[*enc_size];
-        c->aad[3] = buf[*enc_size + 1];
+        uint8_t seq_hi = buf[*enc_size];
+        uint8_t seq_lo = buf[*enc_size+1];
+
+        uint8_t dseq_hi = seq_hi ^ c->aad[2];
+        uint8_t dseq_lo = seq_lo ^ c->aad[3];
+
+        c->aad[2] = seq_hi;
+        c->aad[3] = seq_lo;
+
+        c->inner_iv[10] ^= dseq_hi;
+        c->inner_iv[11] ^= dseq_lo;
     }
     if (config & OHB_MODIFIED_PT) {
         *enc_size -= 1;
@@ -506,6 +521,13 @@ static srtp_err_status_t srtp_aes_gcm_double_decrypt(void *cv,
     int inner_aad_size = RTP_HEADER_SIZE + (4 * cc);
     if (inner_aad_size > c->aad_size) {
         return srtp_err_status_bad_param;
+    }
+
+    /* Set the inner IV */
+    err = c->inner->type->set_iv(c->inner->state, c->inner_iv, c->dir);
+    if (err != srtp_err_status_ok) {
+        debug_print(srtp_mod_aes_gcm_double, "error setting inner IV: %d", err);
+        return err;
     }
 
     /* Set the inner AAD */

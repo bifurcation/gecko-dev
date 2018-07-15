@@ -61,6 +61,7 @@
 typedef struct {
     int key_size;
     srtp_cipher_direction_t dir;
+    uint8_t inner_iv[SRTP_AEAD_SALT_LEN];
     uint8_t aad[GCM_DOUBLE_MAX_AD_LEN];
     int aad_size;
     uint8_t tag[GCM_DOUBLE_MAX_AUTH_TAG_LEN];
