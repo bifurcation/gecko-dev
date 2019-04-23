@@ -223,7 +223,7 @@ typedef struct {
 
 #define ssl_V3_SUITES_IMPLEMENTED 71
 
-#define MAX_DTLS_SRTP_CIPHER_SUITES 6
+#define MAX_DTLS_SRTP_CIPHER_SUITES 7
 
 /* MAX_SIGNATURE_SCHEMES allows for all the values we support. */
 #define MAX_SIGNATURE_SCHEMES 15
